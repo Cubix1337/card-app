@@ -52,7 +52,7 @@ export default function App() {
         <Text>Title: {notification && notification.request.content.title} </Text>
         <Text>Body: {notification && notification.request.content.body}</Text>
         <Text>Data: {notification && JSON.stringify(notification.request.content.data)}</Text>
-           
+           expo notifications
       </View>
       <Button
         title="Press to schedule a notification"

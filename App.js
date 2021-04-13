@@ -1,7 +1,16 @@
-import React, {useState, useEffect} from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useEffect, useRef } from 'react';
+import Constants from "expo-constants";
+import { NavigationContainer, DrawerActions } from '@react-navigation/native';
+import {
+    createDrawerNavigator,
+    DrawerContentScrollView,
+    DrawerItemList,
+    DrawerItem,
+} from '@react-navigation/drawer';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import styled from 'styled-components/native'
+import Ionicons from '@expo/vector-icons/Ionicons'
 
 // Screens
 import Home from './Screens/Home'
@@ -10,62 +19,248 @@ import CardsLibrary from './Screens/CardsLibrary'
 import Scanner from './Screens/Scanner'
 
 // Contexts
-import { CardsContext } from './Context'
-import { View, Text } from 'react-native';
-// import { UserContext } from './Context'
+import { CardsContext, SnackbarContext } from './Context'
+import { View, Text, Touchable, Button } from 'react-native';
+import { Snackbar } from 'react-native-paper';
+import { TouchableOpacity } from 'react-native-gesture-handler';
+import fetch from 'node-fetch';
 
 const Tab = createMaterialTopTabNavigator();
 
-const cards = [
-    { id: 0, name: 'Tony', company: 'Gamesys', jobTitle: 'Dev', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSv1w0wvk5J7oif7X9iT_8gyNWo3hgyRv2F9QSaDpnZeCWdD4caGjux7LrXVQ&usqp=CAc' },
-    { id: 1, name: 'Steve', company: 'Airbnb', jobTitle: 'Dev', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSv1w0wvk5J7oif7X9iT_8gyNWo3hgyRv2F9QSaDpnZeCWdD4caGjux7LrXVQ&usqp=CAc' }
-]
+const HeaderComponent = (props) => {
+    const { dispatch } = props
+
+    return (
+        <Header>
+            <TouchableOpacity onPress={() => dispatch && dispatch(DrawerActions.toggleDrawer())}>
+                <Ionicons name={'menu'} size={30} color={'blue'} />
+            </TouchableOpacity>
+        </Header>
+    )
+}
 
 const Header = styled(View)`
 background: red
 display: flex
 justify-content: space-around
-align-items: center
-height: 100px
+height: 80px
 `
 
+const QRStack = createStackNavigator();
 
-const App = () => {    
-    const [data, setData] = useState(cards)
-    const set = (arg) => setData([...data, {id:data.length,...arg}])  
-    const remove = (arg) => {    
-        let search = data.findIndex(element=>element.id===arg)         
-        let spliced = data.splice(search,1)
-        console.log(spliced)
-        
-        setData(spliced)   
-    }  
-   
-    useEffect(()=>{
-        //console.log(data,'data changed')
+const QRStackScreen = () => {
+    return (
+        <QRStack.Navigator>
+            <QRStack.Screen name="Scanner" component={Scanner} />
+        </QRStack.Navigator>
+    );
+}
 
-    },[data])
+const ImportScreen = () => {
+    const [data, setData] = useState([])
+    const [isLoading, setLoading] = useState(true);
+
+    const handleFetch = async () => {
+        const { manifest } = Constants;
+        const api = (typeof manifest.packagerOpts === `object`) && manifest.packagerOpts.dev
+            ? manifest.debuggerHost.split(`:`).shift().concat(`:8080/rest`)
+            : `api.example.com`
+
+        let response = await fetch(`http://${api}`, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        let json = await response.json()
+        setData(json)
+    }
+
+    useEffect(() => {
+        try {
+            fetch('https://rickandmortyapi.com/api/character/1,2', {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(json => setData(json))
+        } catch (error) {
+            console.log(error)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+    return (
+        <View>
+            {isLoading
+                ? <Text>Loading...</Text>
+                // : console.log(data)
+                : data.map((item, key) => {
+                    // console.log(item)
+                    return (
+                        <View key={key}>
+                            <Text >{item.name}</Text>
+                            <Button onPress={handleFetch} title={'fetch'} />
+                        </View>
+                    )
+                })
+            }
+        </View>
+    )
+}
+
+const Drawer = createDrawerNavigator();
+
+const HomeTabScreen = () => {
+    return (
+        <>
+            <Tab.Navigator
+                tabBarPosition={'bottom'}
+                tabBarOptions={{
+                    activeTintColor: 'tomato',
+                    inactiveTintColor: 'gray',
+                    labelStyle: { color: 'red', fontSize: 14 },
+                    showIcon: true
+                }}
+            >
+                <Tab.Screen
+                    name="Home"
+                    component={QRScreen}
+                    options={{ tabBarIcon: () => <Ionicons name={'home'} size={30} color={'blue'} /> }}
+                />
+                <Tab.Screen
+                    name="Library"
+                    options={{ tabBarIcon: () => <Ionicons name={'albums'} size={30} color={'blue'} /> }}
+                    component={CardsLibrary}
+                />
+                <Tab.Screen
+                    name="QR"
+                    component={Scanner}
+                    options={{ tabBarIcon: () => <Ionicons name={'camera'} size={30} color={'blue'} /> }}
+                />
+            </Tab.Navigator>
+        </>
+    )
+}
+
+const CustomDrawerContent = (props) => {
+    return (
+        <DrawerContentScrollView {...props}>
+            <DrawerItem
+                label="Home"
+                onPress={() => props.navigation.navigate('Home', { screen: 'Home' })}
+            />
+            <DrawerItem
+                label="Library"
+                onPress={() => props.navigation.navigate('Home', { screen: 'Library' })}
+            />
+            <DrawerItem
+                label="QR"
+                onPress={() => props.navigation.navigate('Home', { screen: 'QR' })}
+            />
+            <DrawerItem
+                label="Import"
+                onPress={() => props.navigation.navigate('Import')}
+            />
+
+            <DrawerItem
+                label="Close drawer"
+                onPress={() => props.navigation.dispatch(DrawerActions.closeDrawer())}
+            />
+        </DrawerContentScrollView>
+    );
+}
+
+const SnackbarStack = (content) => {
+    const [visible, setVisible] = useState(false)    
+
+    useEffect(() => {
+        setVisible(!visible)
+        // console.log('content', content)
+    }, [content])
+
+const setText = (content) => {
+    if(content.action === 'remove'){
+        return `${content.name} was removed.`
+    }
+    if(content.action === 'add'){
+        return `${content.name} was added.`
+    }    
+}
 
     return (
-        <CardsContext.Provider value={{
-            data,
-            set, 
-            remove
+        <Snackbar
+            visible={visible}
+            onDismiss={() => setVisible(!visible)}
+            //miliseconds
+            duration={2000}
+            // action={{
+            //     label: 'Acknowledge',
+            //     onPress: () => {
+            //         console.log('acknowledged')
+            //         setVisible(!visible)
+            //     },
+            // }}
+            theme={{ colors: { onSurface: "red", surface: 'blue' } }}
+        >
+            {setText(content)}        
+        </Snackbar>
+    )
+}
+
+const App = () => {
+    const [data, setData] = useState([])
+    const [content, setContent] = useState('')
+    const navigationRef = useRef(null);
+    const [navLoading, setNavLoading] = useState(true)
+
+    const set = (arg) => setData([...data, { id: data.length, ...arg }])
+
+    const remove = (arg) => {
+        let search = data.findIndex(element => element.id === arg)
+        setContent({...data[search],action:'remove'})
+        data.splice(search, 1)
+        setData([...data])        
+    }
+
+    useEffect(() => {
+        // console.log(data, 'data changed')
+
+    }, [data])
+
+    useEffect(() => {
+        setNavLoading(!navLoading)
+    }, [])
+
+    return (
+        // <CardsContext.Provider value={{
+        //     data,
+        //     set,
+        //     remove
+        // }}>
+        <NavigationContainer ref={navigationRef}>
+            <HeaderComponent {...navigationRef.current} />
+            <SnackbarContext.Provider value={{
+                content,
+                setContent,
             }}>
-                <Header>
-<Text>Header</Text>
-                </Header>
-             <NavigationContainer>
-            <Tab.Navigator tabBarPosition={'bottom'} custom={{ name: 'tony' }}>
-                <Tab.Screen name="Home" component={Home} />
-                <Tab.Screen name="Scanner" component={Scanner} />                
-                <Tab.Screen name="QR" component={QRScreen} />   
-                <Tab.Screen name="Library" component={CardsLibrary} />
-            </Tab.Navigator>
-        </NavigationContainer>
-      
-        </CardsContext.Provider>    
-           
+                <SnackbarStack {...content} />
+                <CardsContext.Provider value={{
+                    data,
+                    set,
+                    remove
+                }}>
+                    <Drawer.Navigator initialRouteName="Home" drawerContent={props => <CustomDrawerContent {...props} />} >
+                        <Drawer.Screen name="Home" component={HomeTabScreen} />                    
+                        <Drawer.Screen name="Import" component={ImportScreen} />
+                    </Drawer.Navigator>
+                </CardsContext.Provider>
+            </SnackbarContext.Provider>
+        </NavigationContainer>        
     )
 }
 

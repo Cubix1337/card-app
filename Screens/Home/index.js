@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useContext } from 'react';
 import { Text, View, Button } from 'react-native';
 
-const Home = (props) => {
+const Home = ({ navigation }) => {
     // const user = useContext()
     return (
         <View style={{
@@ -11,6 +11,10 @@ const Home = (props) => {
             justifyContent: 'space-around',
         }}>
             <Text>Home</Text>
+            <Button
+        title="Go to Details"
+        onPress={() => navigation.navigate('Details')}
+      />
         </View>
     )
 }
